@@ -141,5 +141,5 @@ int main(int argc, char *argv[]) {
         reduced_ist_file.write((char*)(&reduced_stat.intersections), sizeof(reduced_stat.intersections));
     }
 
-    std::cout << same_count << "/" << count << std::endl;
+    std::cout << "correctness: " << same_count << "/" << count << std::endl;
 }
