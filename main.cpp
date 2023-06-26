@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
                 float &child_max = child_node.bounds[2 * j + 1];
                 assert(child_min >= min);
                 assert(child_max <= max);
-                int r = (int)((child_min - min) / ldexpf(1.0f, k) * ldexpf(1.0f, num_bits));
-                int s = (int)((child_max - min) / ldexpf(1.0f, k) * ldexpf(1.0f, num_bits));
+                int r = (int)ldexpf(child_min - min, num_bits - k);
+                int s = (int)ldexpf(child_max - min, num_bits - k);
                 float new_min = min + ldexpf((float)r, k - num_bits);
                 float new_max = min + ldexpf((float)(s + 1), k - num_bits);
                 assert(new_min <= child_min);
