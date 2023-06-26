@@ -10,7 +10,7 @@ typedef bvh::Bvh<float> bvh_t;
 typedef bvh::Triangle<float> triangle_t;
 typedef bvh::Vector3<float> vector_t;
 typedef bvh::Ray<float> ray_t;
-typedef bvh::Bvh<float>::Node node_t;
+typedef bvh_t::Node node_t;
 typedef bvh::SweepSahBuilder<bvh_t> builder_t;
 typedef bvh::SingleRayTraverser<bvh_t> traverser_t;
 typedef bvh::ClosestPrimitiveIntersector<bvh_t, triangle_t> intersector_t;
