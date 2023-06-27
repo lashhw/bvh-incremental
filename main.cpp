@@ -10,6 +10,7 @@ typedef bvh::Bvh<float> bvh_t;
 typedef bvh::Triangle<float> triangle_t;
 typedef bvh::Vector3<float> vector_t;
 typedef bvh::Ray<float> ray_t;
+typedef bvh::BoundingBox<float> bbox_t;
 typedef bvh_t::Node node_t;
 typedef bvh::SweepSahBuilder<bvh_t> builder_t;
 typedef bvh::SingleRayTraverser<bvh_t> traverser_t;
@@ -68,17 +69,17 @@ int main(int argc, char *argv[]) {
               reduced_bvh.primitive_indices.get());
 
     std::cout << "updating..." << std::endl;
-    std::stack<size_t> stack;
-    stack.push(0);
+    std::stack<std::pair<size_t, bbox_t>> stack;
+    stack.emplace(0, full_bvh.nodes[0].bounding_box_proxy().to_bounding_box());
     while (!stack.empty()) {
-        const auto &node = reduced_bvh.nodes[stack.top()];
+        auto [idx, bbox] = stack.top();
+        const auto &node = reduced_bvh.nodes[idx];
         stack.pop();
         if (node.is_leaf())
             continue;
         for (int i = 0; i < 2; i++) {
             size_t child_idx = node.first_child_or_primitive + i;
             auto &child_node = reduced_bvh.nodes[child_idx];
-            stack.push(child_idx);
             for (int j = 0; j < 3; j++) {
                 float min = node.bounds[2 * j];
                 float max = node.bounds[2 * j + 1];
@@ -100,11 +101,16 @@ int main(int argc, char *argv[]) {
             }
             const auto &full_child_node = full_bvh.nodes[child_idx];
             float full_sa = full_child_node.bounding_box_proxy().half_area();
-            float reduced_sa = child_node.bounding_box_proxy().half_area();
-            if (reduced_sa / full_sa > ratio)
+            bbox_t reduced_bbox = child_node.bounding_box_proxy().to_bounding_box();
+            reduced_bbox.shrink(bbox);
+            float reduced_sa = reduced_bbox.half_area();
+            if (reduced_sa / full_sa > ratio) {
                 child_node.bounding_box_proxy() = full_child_node.bounding_box_proxy().to_bounding_box();
-            else
+                stack.emplace(child_idx, child_node.bounding_box_proxy().to_bounding_box());
+            } else {
                 child_node.reduced = true;
+                stack.emplace(child_idx, reduced_bbox);
+            }
         }
     }
 
