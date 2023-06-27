@@ -86,6 +86,12 @@ private:
             auto distance_left  = node_intersector.intersect(*left_child,  ray);
             auto distance_right = node_intersector.intersect(*right_child, ray);
 
+            if (left_child->reduced) statistics.reduced_count++;
+            else statistics.full_count++;
+
+            if (right_child->reduced) statistics.reduced_count++;
+            else statistics.full_count++;
+
             if (distance_left.first <= distance_left.second) {
                 if (bvh_unlikely(left_child->is_leaf())) {
                     if (intersect_leaf(*left_child, ray, best_hit, primitive_intersector, statistics) &&
@@ -132,6 +138,8 @@ public:
     struct Statistics {
         size_t traversal_steps = 0;
         size_t intersections   = 0;
+        size_t full_count = 0;
+        size_t reduced_count = 0;
     };
 
     SingleRayTraverser(const Bvh& bvh)

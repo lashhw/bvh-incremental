@@ -16,15 +16,23 @@ typedef bvh::SingleRayTraverser<bvh_t> traverser_t;
 typedef bvh::ClosestPrimitiveIntersector<bvh_t, triangle_t> intersector_t;
 typedef traverser_t::Statistics statistics_t;
 
-constexpr int num_bits = 6;
-
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        std::cerr << "usage: ./bvh_incremental MODEL RAY" << std::endl;
+    if (argc != 5) {
+        std::cerr << "usage: ./bvh_incremental MODEL_FILE RAY_FILE NUM_BITS RATIO" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    happly::PLYData ply_data(argv[1]);
+    char *model_file = argv[1];
+    char *ray_file = argv[2];
+    int num_bits = std::stoi(argv[3]);
+    float ratio = std::stof(argv[4]);
+
+    std::cout << "model_file = " << model_file << std::endl;
+    std::cout << "ray_file = " << ray_file << std::endl;
+    std::cout << "num_bits = " << num_bits << std::endl;
+    std::cout << "ratio = " << ratio << std::endl;
+
+    happly::PLYData ply_data(model_file);
     std::vector<std::array<double, 3>> v_pos = ply_data.getVertexPositions();
     std::vector<std::vector<size_t>> f_idx = ply_data.getFaceIndices<size_t>();
 
@@ -90,6 +98,13 @@ int main(int argc, char *argv[]) {
                 child_min = new_min;
                 child_max = new_max;
             }
+            const auto &full_child_node = full_bvh.nodes[child_idx];
+            float full_sa = full_child_node.bounding_box_proxy().half_area();
+            float reduced_sa = child_node.bounding_box_proxy().half_area();
+            if (reduced_sa / full_sa > ratio)
+                child_node.bounding_box_proxy() = full_child_node.bounding_box_proxy().to_bounding_box();
+            else
+                child_node.reduced = true;
         }
     }
 
@@ -98,7 +113,7 @@ int main(int argc, char *argv[]) {
     traverser_t reduced_traverser(reduced_bvh);
     intersector_t full_intersector(full_bvh, triangles.data());
     intersector_t reduced_intersector(reduced_bvh, triangles.data());
-    std::ifstream ray_file(argv[2], std::ios::in | std::ios::binary);
+    std::ifstream ray_fstream(ray_file, std::ios::in | std::ios::binary);
     float r[7];
     int count = 0;
     int same_count = 0;
@@ -106,7 +121,9 @@ int main(int argc, char *argv[]) {
     std::ofstream full_ist_file("full_ist.bin", std::ios::out | std::ios::binary);
     std::ofstream reduced_trv_file("reduced_trv.bin", std::ios::out | std::ios::binary);
     std::ofstream reduced_ist_file("reduced_ist.bin", std::ios::out | std::ios::binary);
-    for (; ray_file.read((char*)(&r), 7 * sizeof(float)); count++) {
+    std::ofstream reduced_trv_full_file("reduced_trv_full.bin", std::ios::out | std::ios::binary);
+    std::ofstream reduced_trv_reduced_file("reduced_trv_reduced.bin", std::ios::out | std::ios::binary);
+    for (; ray_fstream.read((char*)(&r), 7 * sizeof(float)); count++) {
         ray_t ray(
             vector_t(r[0], r[1], r[2]),
             vector_t(r[3], r[4], r[5]),
@@ -138,6 +155,8 @@ int main(int argc, char *argv[]) {
         full_ist_file.write((char*)(&full_stat.intersections), sizeof(full_stat.intersections));
         reduced_trv_file.write((char*)(&reduced_stat.traversal_steps), sizeof(reduced_stat.traversal_steps));
         reduced_ist_file.write((char*)(&reduced_stat.intersections), sizeof(reduced_stat.intersections));
+        reduced_trv_full_file.write((char*)(&reduced_stat.full_count), sizeof(reduced_stat.full_count));
+        reduced_trv_reduced_file.write((char*)(&reduced_stat.reduced_count), sizeof(reduced_stat.reduced_count));
     }
 
     std::cout << "correctness: " << same_count << "/" << count << std::endl;
