@@ -91,9 +91,11 @@ int main(int argc, char *argv[]) {
                 assert(child_min >= min);
                 assert(child_max <= max);
                 int r = (int)ldexpf(child_min - min, num_bits - exp);
-                int s = (int)ldexpf(child_max - min, num_bits - exp);
+                int s = (int)ldexpf(max - child_max, num_bits - exp);
+                assert(0 <= r && r <= (1 << num_bits) - 1);
+                assert(0 <= s && s <= (1 << num_bits) - 1);
                 float new_min = min + ldexpf((float)r, exp - num_bits);
-                float new_max = min + ldexpf((float)(s + 1), exp - num_bits);
+                float new_max = max - ldexpf((float)s, exp - num_bits);
                 assert(new_min <= child_min);
                 assert(new_max >= child_max);
                 child_min = new_min;
